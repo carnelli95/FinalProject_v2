@@ -1,0 +1,17 @@
+# Core ML libraries
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+
+# Image processing
+Pillow>=9.0.0
+
+# Data handling
+numpy>=1.21.0
+
+# Testing
+pytest>=7.0.0
+hypothesis>=6.70.0
+
+# Development
+tqdm>=4.64.0
