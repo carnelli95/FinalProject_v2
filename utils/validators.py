@@ -86,6 +86,43 @@ class InputValidator:
         
         if not images.dtype == torch.float32:
             raise ValueError(f"Images must be float32 type, got {images.dtype}")
+    
+    @staticmethod
+    def validate_style_description(style_desc) -> None:
+        """
+        Validate style description for API requests.
+        
+        Args:
+            style_desc: Style description object
+            
+        Raises:
+            ValueError: If validation fails
+        """
+        if not style_desc.category:
+            raise ValueError("Category is required")
+        
+        if not style_desc.style or len(style_desc.style) == 0:
+            raise ValueError("At least one style tag is required")
+        
+        # 카테고리 유효성 검사
+        valid_categories = ["상의", "하의", "아우터", "원피스", "세트", "기타"]
+        if style_desc.category not in valid_categories:
+            raise ValueError(f"Invalid category. Must be one of: {valid_categories}")
+        
+        # 스타일 태그 길이 제한
+        if len(style_desc.style) > 10:
+            raise ValueError("Too many style tags. Maximum 10 allowed.")
+        
+        # 각 필드의 문자열 길이 제한
+        for style_tag in style_desc.style:
+            if len(style_tag) > 50:
+                raise ValueError("Style tag too long. Maximum 50 characters.")
+        
+        if style_desc.material and len(style_desc.material) > 10:
+            raise ValueError("Too many material tags. Maximum 10 allowed.")
+        
+        if style_desc.detail and len(style_desc.detail) > 15:
+            raise ValueError("Too many detail tags. Maximum 15 allowed.")
 
 
 class ModelValidator:

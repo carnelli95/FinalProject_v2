@@ -516,8 +516,22 @@ class FashionTrainer:
         avg_loss = total_loss / num_batches
         
         # Compute validation metrics
-        all_similarities = torch.cat(all_similarities, dim=0)
-        metrics = self._compute_validation_metrics(all_similarities)
+        if all_similarities:
+            # 각 배치의 similarity matrix를 개별적으로 처리
+            all_metrics = []
+            for similarities in all_similarities:
+                batch_metrics = self._compute_validation_metrics(similarities)
+                all_metrics.append(batch_metrics)
+            
+            # 평균 계산
+            metrics = {}
+            if all_metrics:
+                for key in all_metrics[0].keys():
+                    metrics[key] = sum(m[key] for m in all_metrics) / len(all_metrics)
+            else:
+                metrics = {'top1_accuracy': 0.0, 'top5_accuracy': 0.0, 'mean_reciprocal_rank': 0.0}
+        else:
+            metrics = {'top1_accuracy': 0.0, 'top5_accuracy': 0.0, 'mean_reciprocal_rank': 0.0}
         
         return avg_loss, metrics
     
@@ -562,28 +576,49 @@ class FashionTrainer:
                 all_json_embeddings.append(embeddings['json_embeddings'].cpu())
                 all_similarities.append(embeddings['similarity_matrix'].cpu())
         
-        # Concatenate all embeddings
-        all_image_embeddings = torch.cat(all_image_embeddings, dim=0)
-        all_json_embeddings = torch.cat(all_json_embeddings, dim=0)
-        all_similarities = torch.cat(all_similarities, dim=0)
+        # Concatenate all embeddings (각 배치별로 처리)
+        if all_image_embeddings and all_json_embeddings and all_similarities:
+            # 임베딩은 차원이 같으므로 concatenate 가능
+            all_image_embeddings = torch.cat(all_image_embeddings, dim=0)
+            all_json_embeddings = torch.cat(all_json_embeddings, dim=0)
+            
+            # Similarity matrix는 각 배치별로 메트릭 계산 후 평균
+            batch_metrics = []
+            for similarities in all_similarities:
+                batch_metric = self._compute_validation_metrics(similarities)
+                batch_metrics.append(batch_metric)
+            
+            # 평균 계산
+            avg_metrics = {}
+            if batch_metrics:
+                for key in batch_metrics[0].keys():
+                    avg_metrics[key] = sum(m[key] for m in batch_metrics) / len(batch_metrics)
+        else:
+            all_image_embeddings = torch.empty(0, 512)
+            all_json_embeddings = torch.empty(0, 512)
+            avg_metrics = {'top1_accuracy': 0.0, 'top5_accuracy': 0.0, 'mean_reciprocal_rank': 0.0}
         
         # Compute comprehensive metrics
-        metrics = {
-            'num_samples': all_image_embeddings.size(0),
-            'embedding_dim': all_image_embeddings.size(1),
-            
-            # Embedding quality
-            'image_embedding_norm': torch.norm(all_image_embeddings, dim=-1).mean().item(),
-            'json_embedding_norm': torch.norm(all_json_embeddings, dim=-1).mean().item(),
-            
-            # Similarity statistics
-            'positive_similarity_mean': all_similarities.diag().mean().item(),
-            'positive_similarity_std': all_similarities.diag().std().item(),
-            'negative_similarity_mean': (all_similarities.sum() - all_similarities.diag().sum()) / (all_similarities.numel() - all_similarities.size(0)),
-            
-            # Retrieval metrics
-            **self._compute_validation_metrics(all_similarities)
-        }
+        if all_image_embeddings.size(0) > 0:
+            metrics = {
+                'num_samples': all_image_embeddings.size(0),
+                'embedding_dim': all_image_embeddings.size(1),
+                
+                # Embedding quality
+                'image_embedding_norm': torch.norm(all_image_embeddings, dim=-1).mean().item(),
+                'json_embedding_norm': torch.norm(all_json_embeddings, dim=-1).mean().item(),
+                
+                # Retrieval metrics (배치별 평균 사용)
+                **avg_metrics
+            }
+        else:
+            metrics = {
+                'num_samples': 0,
+                'embedding_dim': 512,
+                'image_embedding_norm': 0.0,
+                'json_embedding_norm': 0.0,
+                **avg_metrics
+            }
         
         return metrics
     

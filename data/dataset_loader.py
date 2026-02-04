@@ -608,3 +608,47 @@ class KFashionDatasetLoader:
     def __iter__(self) -> Iterator[FashionItem]:
         """Iterate over fashion items."""
         return iter(self._fashion_items)
+    
+    def process_json_for_inference(self, style_dict: Dict) -> Dict[str, torch.Tensor]:
+        """
+        Process JSON style description for API inference.
+        
+        Args:
+            style_dict: Dictionary containing style description
+            
+        Returns:
+            Dictionary with tensors ready for model inference
+        """
+        if not self._vocabularies_built:
+            raise ValueError("Vocabularies not built. Call build_vocabularies() first.")
+        
+        # Process the JSON data
+        processed = self.processor.process_json_fields(style_dict)
+        
+        # Convert to tensors with batch dimension
+        batch = {}
+        
+        # Single categorical fields
+        batch['category'] = torch.tensor([processed['category']], dtype=torch.long)
+        batch['silhouette'] = torch.tensor([processed['silhouette']], dtype=torch.long)
+        
+        # Multi-categorical fields with padding
+        max_lengths = {'style': 10, 'material': 10, 'detail': 15}
+        
+        for field in ['style', 'material', 'detail']:
+            ids = processed[field]
+            max_len = max_lengths[field]
+            
+            # Pad or truncate to max length
+            if len(ids) > max_len:
+                ids = ids[:max_len]
+            else:
+                ids = ids + [0] * (max_len - len(ids))  # Pad with 0 (UNK token)
+            
+            batch[field] = torch.tensor([ids], dtype=torch.long)
+            
+            # Create mask (1 for valid tokens, 0 for padding)
+            mask = [1 if i < len(processed[field]) else 0 for i in range(max_len)]
+            batch[f'{field}_mask'] = torch.tensor([mask], dtype=torch.long)
+        
+        return batch
