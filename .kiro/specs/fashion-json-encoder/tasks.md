@@ -2,7 +2,7 @@
 
 ## 개요
 
-K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하는 JSON Encoder를 구현합니다. CLIP 이미지 임베딩과 정렬되는 공통 임베딩 공간을 구축하여 패션 이미지 추천 시스템의 기반을 마련합니다.
+K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하는 JSON Encoder를 구현합니다. FashionCLIP 이미지 임베딩과 정렬되는 공통 임베딩 공간을 구축하여 패션 이미지 추천 시스템의 기반을 마련합니다.
 
 ## 작업 목록
 
@@ -13,20 +13,27 @@ K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하�
   - _Requirements: 1.3, 4.2_
 
 - [ ] 2. 데이터 전처리 파이프라인 구현
-  - [x] 2.1 K-Fashion 데이터셋 로더 구현
-    - JSON 메타데이터 파싱 및 필터링 (상의/하의/아우터만)
+  - [x] 2.1 새로운 폴더 구조 데이터 로더 업데이트
+    - C:/sample/라벨링데이터/{카테고리}/ 경로 지원
+    - 레트로/로맨틱/리조트 카테고리별 폴더 스캔
+    - 기존 "No fashion items loaded" 오류 해결
+    - 로드된 데이터 개수 및 카테고리별 분포 출력
+    - _Requirements: 5.1-5.5_
+  
+  - [x] 2.2 K-Fashion 데이터셋 로더 구현 (기존)
+    - JSON 메타데이터 파싱 및 필터링 (레트로/로맨틱/리조트만)
     - Polygon to BBox 변환 함수 구현
     - BBox 기준 이미지 크롭 기능 구현
     - _Requirements: 전처리 요구사항_
   
-  - [x] 2.2 데이터 전처리 단위 테스트 작성
+  - [x] 2.4 데이터 전처리 단위 테스트 작성
 
     - Polygon to BBox 변환 정확성 테스트
     - 이미지 크롭 기능 테스트
     - 필터링 로직 테스트
     - _Requirements: 전처리 요구사항_
   
-  - [x] 2.3 Vocabulary 구축 시스템 구현
+  - [x] 2.5 Vocabulary 구축 시스템 구현
     OOV(out-of-vocabulary) 토큰을 위한 <UNK> index 정의
     - 각 필드별 vocabulary 생성 (category, style, silhouette, material, detail)
     - JSON 필드를 vocabulary index로 변환하는 함수 구현
@@ -53,13 +60,13 @@ K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하�
 
 - [x] 4. Contrastive Learning 시스템 구현
   - [x] 4.1 ContrastiveLearner 클래스 구현
-    - CLIP Image Encoder 통합 (frozen 상태 유지)
+    - FashionCLIP Image Encoder 통합 (frozen 상태 유지)
     - InfoNCE Loss 구현 (temperature τ=0.07)
     - In-batch negative sampling 구현
     - _Requirements: 1.5, 3.1-3.3_
   
-  - [ ]* 4.2 CLIP 고정 상태 속성 테스트 작성
-    - **Property 3: CLIP 모델 고정 상태 유지**
+  - [ ]* 4.2 FashionCLIP 고정 상태 속성 테스트 작성
+    - **Property 3: FashionCLIP 모델 고정 상태 유지**
     - **Validates: Requirements 1.5**
   
   - [ ]* 4.3 Positive/Negative Pair 생성 속성 테스트 작성

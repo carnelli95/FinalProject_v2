@@ -350,7 +350,7 @@ class FashionDataModule:
             augment_prob: Probability of data augmentation
         """
         self.dataset_path = dataset_path
-        self.target_categories = target_categories or ['상의', '하의', '아우터']
+        self.target_categories = target_categories or ['레트로', '로맨틱', '리조트']
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.train_split = train_split
@@ -378,7 +378,15 @@ class FashionDataModule:
         )
         
         # Load dataset and build vocabularies
-        fashion_items = self.dataset_loader.load_dataset()
+        try:
+            # Try new category-based folder structure first
+            fashion_items = self.dataset_loader.load_dataset_by_category()
+        except (FileNotFoundError, ValueError) as e:
+            print(f"Category-based loading failed: {e}")
+            print("Falling back to legacy format...")
+            # Fall back to legacy format
+            fashion_items = self.dataset_loader.load_dataset()
+        
         vocabularies = self.dataset_loader.build_vocabularies()
         
         print(f"Loaded {len(fashion_items)} fashion items")

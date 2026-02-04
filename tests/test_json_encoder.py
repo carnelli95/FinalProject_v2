@@ -26,10 +26,11 @@ class TestJSONEncoder:
             'detail': 25
         }
         
+        # 테스트용 작은 차원 사용 (빠른 실행)
         self.encoder = JSONEncoder(
             vocab_sizes=self.vocab_sizes,
-            embedding_dim=128,
-            hidden_dim=256,
+            embedding_dim=64,   # 축소된 임베딩 차원
+            hidden_dim=128,     # 축소된 은닉층 차원
             output_dim=512,
             dropout_rate=0.1
         )
@@ -71,7 +72,7 @@ class TestJSONEncoder:
         
         # Check embedding dimensions
         assert self.encoder.category_emb.num_embeddings == self.vocab_sizes['category']
-        assert self.encoder.category_emb.embedding_dim == 128
+        assert self.encoder.category_emb.embedding_dim == 64  # 축소된 차원
         
         # Check MLP structure
         assert isinstance(self.encoder.mlp, nn.Sequential)
@@ -205,7 +206,7 @@ class TestJSONEncoder:
         # Use style embedding layer for testing
         result = self.encoder._process_multi_categorical(ids, mask, self.encoder.style_emb)
         
-        assert result.shape == (batch_size, 128)  # embedding_dim
+        assert result.shape == (batch_size, 64)  # 축소된 embedding_dim
         
         # Results should be different for different inputs
         assert not torch.allclose(result[0], result[1])

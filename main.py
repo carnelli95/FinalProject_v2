@@ -90,21 +90,73 @@ class FashionEncoderSystem:
             logger.warning("CUDA를 사용할 수 없어 CPU를 사용합니다")
         
         return device
+    def create_config_file(output_path: str, auto_categories: list = None) -> None:
+        """샘플 설정 파일을 생성합니다. 스타일 기반 target_categories 자동 적용 가능"""
+        
+        # 기본 config 생성
+        config = TrainingConfig()
+        
+        # target_categories 설정
+        if auto_categories is not None and len(auto_categories) > 0:
+            config.target_categories = auto_categories
+        else:
+            # 기본값
+            config.target_categories = ["레트로", "로맨틱", "리조트"]
+
+        # dict로 변환
+        config_dict = {
+            'batch_size': config.batch_size,
+            'learning_rate': config.learning_rate,
+            'temperature': config.temperature,
+            'embedding_dim': config.embedding_dim,
+            'hidden_dim': config.hidden_dim,
+            'output_dim': config.output_dim,
+            'dropout_rate': config.dropout_rate,
+            'weight_decay': config.weight_decay,
+            'max_epochs': config.max_epochs,
+            'target_categories': config.target_categories,
+            'image_size': config.image_size,
+            'crop_padding': config.crop_padding
+        }
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(config_dict, f, indent=2, ensure_ascii=False)
+
+        print(f"샘플 설정 파일이 생성되었습니다: {output_path}")
+
+    
     
     def setup_data(self, dataset_path: str, **kwargs) -> None:
-        """
-        지정된 데이터셋으로 데이터 모듈을 설정합니다.
-        
-        Args:
-            dataset_path: K-Fashion 데이터셋 경로
-            **kwargs: FashionDataModule을 위한 추가 인수
-        """
         logger.info(f"데이터셋으로 데이터 모듈을 설정합니다: {dataset_path}")
         
-        # config와 kwargs 병합
+        # JSON 폴더 확인
+        annotations_dir = Path(dataset_path) / "annotations"
+        if not annotations_dir.exists():
+            logger.warning("JSON 디렉토리를 찾을 수 없습니다. 기본 target_categories 사용")
+            detected_categories = self.config.target_categories
+        else:
+            # JSON 파일에서 스타일 읽기
+            detected_categories = set()
+            for json_file in annotations_dir.glob("*.json"):
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    labels = data.get("라벨링", {})
+                    styles = labels.get("스타일", [])
+                    for style_entry in styles:
+                        style_name = style_entry.get("스타일")
+                        if style_name:
+                            detected_categories.add(style_name)
+            detected_categories = list(detected_categories)
+            if len(detected_categories) == 0:
+                logger.warning("스타일 정보가 JSON에서 발견되지 않았습니다. 기본 target_categories 사용")
+                detected_categories = self.config.target_categories
+
+        logger.info(f"자동 감지된 target_categories: {detected_categories}")
+        
+        # data_module 생성
         data_config = {
             'dataset_path': dataset_path,
-            'target_categories': self.config.target_categories,
+            'target_categories': detected_categories,
             'batch_size': self.config.batch_size,
             'image_size': self.config.image_size,
             **kwargs
@@ -115,15 +167,15 @@ class FashionEncoderSystem:
         try:
             self.data_module.setup()
             vocab_sizes = self.data_module.get_vocab_sizes()
-            
             logger.info(f"데이터 설정이 성공적으로 완료되었습니다")
             logger.info(f"학습 샘플: {len(self.data_module.train_dataset)}")
             logger.info(f"검증 샘플: {len(self.data_module.val_dataset)}")
             logger.info(f"어휘 크기: {vocab_sizes}")
-            
         except Exception as e:
             logger.error(f"데이터 설정 실패: {e}")
             raise
+
+
     
     def setup_trainer(self, checkpoint_dir: str = 'checkpoints', 
                      log_dir: str = 'logs') -> None:
@@ -352,6 +404,7 @@ class FashionEncoderSystem:
 def create_config_file(output_path: str) -> None:
     """샘플 설정 파일을 생성합니다."""
     config = TrainingConfig()
+    config.target_categories = ["레트로", "로맨틱", "리조트"]
     
     config_dict = {
         'batch_size': config.batch_size,

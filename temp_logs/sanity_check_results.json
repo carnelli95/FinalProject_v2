@@ -1,0 +1,72 @@
+{
+  "initial_analysis": {
+    "phase": "Initial",
+    "total_samples": 160,
+    "embedding_dim": 512,
+    "mean": 0.0007659097318537533,
+    "std": 0.04418780654668808,
+    "min": -0.11111246794462204,
+    "max": 0.13235189020633698,
+    "norm_mean": 1.0,
+    "norm_std": 0.0,
+    "norm_min": 1.0,
+    "norm_max": 1.0,
+    "is_normalized": true,
+    "field_unique_counts": {
+      "category": 1,
+      "style": 0,
+      "silhouette": 1,
+      "material": 0,
+      "detail": 0
+    }
+  },
+  "training_results": {
+    "train_losses": [
+      0.00390303387798162,
+      0.00390718542729263,
+      0.003899692973829116
+    ],
+    "val_losses": [
+      0.0039028565364855306,
+      0.0039055389524609956,
+      0.0039019159782953837
+    ]
+  },
+  "final_analysis": {
+    "phase": "Final",
+    "total_samples": 160,
+    "embedding_dim": 512,
+    "mean": -0.0032904907129704952,
+    "std": 0.044071778655052185,
+    "min": -0.12783095240592957,
+    "max": 0.13471540808677673,
+    "norm_mean": 1.0,
+    "norm_std": 0.0,
+    "norm_min": 1.0,
+    "norm_max": 1.0,
+    "is_normalized": true,
+    "field_unique_counts": {
+      "category": 1,
+      "style": 0,
+      "silhouette": 1,
+      "material": 0,
+      "detail": 0
+    }
+  },
+  "validation_results": {
+    "dimension_check": true,
+    "normalization_check": true,
+    "gradient_check": true,
+    "field_processing_check": true,
+    "batch_consistency_check": true,
+    "errors": []
+  },
+  "vocab_sizes": {
+    "category": 4,
+    "style": 1,
+    "silhouette": 1,
+    "material": 1,
+    "detail": 1
+  },
+  "model_params": 296704
+}

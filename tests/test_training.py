@@ -18,7 +18,7 @@ project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 from training.trainer import FashionTrainer
-from utils.config import TrainingConfig
+from utils.config import TrainingConfig, TestConfig
 from data.data_models import ProcessedBatch
 
 
@@ -31,13 +31,8 @@ class TestFashionTrainer(unittest.TestCase):
         self.checkpoint_dir = Path(self.temp_dir) / 'checkpoints'
         self.log_dir = Path(self.temp_dir) / 'logs'
         
-        self.config = TrainingConfig(
-            batch_size=4,
-            learning_rate=1e-3,
-            max_epochs=2,
-            embedding_dim=32,
-            hidden_dim=64
-        )
+        # 테스트용 설정 사용 (빠른 실행)
+        self.config = TestConfig()
         
         self.vocab_sizes = {
             'category': 10,
@@ -263,7 +258,7 @@ class TestTrainingUtilities(unittest.TestCase):
     def test_early_stopping_logic(self):
         """Test early stopping logic."""
         trainer = FashionTrainer(
-            config=TrainingConfig(),
+            config=TestConfig(),  # 테스트용 설정 사용
             vocab_sizes={'category': 10, 'style': 10, 'silhouette': 10, 'material': 10, 'detail': 10},
             device='cpu',
             checkpoint_dir='temp_checkpoints',

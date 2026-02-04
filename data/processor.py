@@ -29,7 +29,7 @@ class FashionDataProcessor:
             target_categories: List of target categories to process
         """
         self.dataset_path = Path(dataset_path)
-        self.target_categories = target_categories or ['상의', '하의', '아우터']
+        self.target_categories = target_categories or ['레트로', '로맨틱', '리조트']
         self.vocabularies = {}
         
     def polygon_to_bbox(self, polygon: List[Tuple[int, int]]) -> Tuple[int, int, int, int]:

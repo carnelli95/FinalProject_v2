@@ -3,7 +3,7 @@ Training loop implementation for Fashion JSON Encoder.
 
 This module implements the training pipeline including JSON Encoder standalone training,
 full contrastive learning training, optimizer setup, learning rate scheduling,
-checkpointing, and validation metrics.
+checkpointing, and validation metrics with real-time monitoring.
 """
 
 import os
@@ -23,6 +23,7 @@ from models.json_encoder import JSONEncoder
 from models.contrastive_learner import ContrastiveLearner
 from data.fashion_dataset import FashionDataModule, ProcessedBatch
 from utils.config import TrainingConfig
+from utils.training_monitor import TrainingMonitor
 
 
 class FashionTrainer:
@@ -58,6 +59,9 @@ class FashionTrainer:
         # Create directories
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize training monitor (simple version)
+        self.monitor = TrainingMonitor(results_dir="results")
         
         # Initialize models
         self.json_encoder = None
@@ -158,6 +162,9 @@ class FashionTrainer:
         print("STARTING JSON ENCODER STANDALONE TRAINING")
         print(f"{'='*60}")
         
+        # Start monitoring
+        self.monitor.start_training("Stage 1: JSON Encoder Standalone", num_epochs)
+        
         self.json_encoder.train()
         
         # Simple MSE loss for standalone training (reconstruct random target)
@@ -213,6 +220,14 @@ class FashionTrainer:
             print(f"  Val Loss: {val_loss:.4f}")
             print(f"  Output Stats: mean={val_stats['mean']:.4f}, std={val_stats['std']:.4f}, norm={val_stats['norm']:.4f}")
             
+            # Update monitoring
+            epoch_metrics = {
+                'train_loss': avg_train_loss,
+                'val_loss': val_loss,
+                'l2_norm': val_stats['norm']
+            }
+            self.monitor.update_epoch(epoch + 1, epoch_metrics)
+            
             # Log to tensorboard
             self.writer.add_scalar('Standalone/Train_Loss', avg_train_loss, epoch)
             self.writer.add_scalar('Standalone/Val_Loss', val_loss, epoch)
@@ -241,6 +256,9 @@ class FashionTrainer:
                 print(f"  {key}: {value:.4f}")
             else:
                 print(f"  {key}: {value}")
+        
+        # Finish monitoring
+        self.monitor.finish_training()
         
         return results
     
@@ -345,6 +363,9 @@ class FashionTrainer:
         print(f"Learning rate: {self.config.learning_rate}")
         print(f"Temperature: {self.config.temperature}")
         
+        # Start monitoring
+        self.monitor.start_training("Stage 2: Contrastive Learning", num_epochs)
+        
         # Training history
         train_losses = []
         val_losses = []
@@ -376,6 +397,19 @@ class FashionTrainer:
             print(f"  Val Loss: {val_loss:.4f}")
             print(f"  Learning Rate: {current_lr:.6f}")
             print(f"  Val Metrics: {val_metrics}")
+            
+            # Update monitoring
+            epoch_metrics = {
+                'train_loss': train_loss,
+                'val_loss': val_loss,
+                'top1_accuracy': val_metrics.get('top1_accuracy', 0),
+                'top5_accuracy': val_metrics.get('top5_accuracy', 0),
+                'mrr': val_metrics.get('mean_reciprocal_rank', 0),
+                'positive_similarity': val_metrics.get('avg_positive_similarity', 0),
+                'negative_similarity': val_metrics.get('avg_negative_similarity', 0),
+                'l2_norm': 1.0  # L2 normalized embeddings
+            }
+            self.monitor.update_epoch(epoch + 1, epoch_metrics)
             
             # Tensorboard logging
             self.writer.add_scalar('Training/Loss', train_loss, epoch)
@@ -414,6 +448,9 @@ class FashionTrainer:
         print(f"{'='*60}")
         print(f"Best validation loss: {self.best_val_loss:.4f}")
         print(f"Final metrics: {final_metrics}")
+        
+        # Finish monitoring
+        self.monitor.finish_training()
         
         return results
     
@@ -568,11 +605,15 @@ class FashionTrainer:
         checkpoint_path = self.checkpoint_dir / f'checkpoint_epoch_{epoch+1}.pt'
         torch.save(checkpoint, checkpoint_path)
         
+        # Notify monitor
+        self.monitor.save_checkpoint(str(checkpoint_path))
+        
         # Save best checkpoint
         if is_best:
             best_path = self.checkpoint_dir / 'best_model.pt'
             torch.save(checkpoint, best_path)
             print(f"  ✓ New best model saved: {best_path}")
+            self.monitor.save_checkpoint(str(best_path))
         
         # Keep only last 3 checkpoints
         self._cleanup_checkpoints()

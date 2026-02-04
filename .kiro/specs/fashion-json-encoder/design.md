@@ -2,7 +2,7 @@
 
 ## 개요
 
-패션 이미지 추천 시스템을 위한 JSON Encoder 설계. K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하여 CLIP 이미지 임베딩과 정렬되는 공통 임베딩 공간을 구축한다.
+패션 이미지 추천 시스템을 위한 JSON Encoder 설계. K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하여 FashionCLIP 이미지 임베딩과 정렬되는 공통 임베딩 공간을 구축한다.
 
 ### 핵심 설계 원칙
 
@@ -25,7 +25,7 @@ K-Fashion Dataset (64GB)
 학습 데이터: (crop_image, json_metadata) 쌍
     ↓
 ┌─────────────────┐    ┌─────────────────┐
-│ CLIP Image      │    │ JSON Encoder    │
+│ FashionCLIP     │    │ JSON Encoder    │
 │ Encoder         │    │ (학습 대상)      │
 │ (Frozen)        │    │                 │
 └─────────────────┘    └─────────────────┘
@@ -123,7 +123,7 @@ class JSONEncoder(nn.Module):
 ```python
 class ContrastiveLearner(nn.Module):
     def __init__(self, json_encoder: JSONEncoder, 
-                 clip_encoder: CLIPVisionModel,
+                 fashionclip_encoder: FashionCLIPVisionModel,
                  temperature: float = 0.07):
         
     def forward(self, images: torch.Tensor, 
@@ -142,7 +142,7 @@ class ContrastiveLearner(nn.Module):
 ```python
 class FashionDataProcessor:
     def __init__(self, dataset_path: str, 
-                 target_categories: List[str] = ['상의', '하의', '아우터']):
+                 target_categories: List[str] = ['레트로', '로맨틱', '리조트']):
         
     def polygon_to_bbox(self, polygon: List[Tuple[int, int]]) -> Tuple[int, int, int, int]:
         """Polygon 좌표를 BBox로 변환"""
@@ -219,7 +219,7 @@ class TrainingConfig:
     max_epochs: int = 100
     
     # 데이터 관련
-    target_categories: List[str] = field(default_factory=lambda: ['상의', '하의', '아우터'])
+    target_categories: List[str] = field(default_factory=lambda: ['레트로', '로맨틱', '리조트'])
     image_size: int = 224
     crop_padding: float = 0.1  # BBox 크롭 시 패딩 비율
 ```
@@ -233,11 +233,11 @@ class TrainingConfig:
 **Validates: Requirements 1.1**
 
 ### Property 2: 정규화된 출력 벡터
-*임의의* JSON_Encoder 출력 벡터에 대해, L2 norm이 1이어야 하고 CLIP 이미지 임베딩과 cosine similarity 계산이 가능해야 한다
+*임의의* JSON_Encoder 출력 벡터에 대해, L2 norm이 1이어야 하고 FashionCLIP 이미지 임베딩과 cosine similarity 계산이 가능해야 한다
 **Validates: Requirements 1.2**
 
-### Property 3: CLIP 모델 고정 상태 유지
-*임의의* 학습 과정에서, CLIP Image Encoder의 파라미터는 학습 전후가 동일해야 한다
+### Property 3: FashionCLIP 모델 고정 상태 유지
+*임의의* 학습 과정에서, FashionCLIP Image Encoder의 파라미터는 학습 전후가 동일해야 한다
 **Validates: Requirements 1.5**
 
 ### Property 4: 다중 범주형 필드 처리
@@ -313,12 +313,12 @@ class ModelValidator:
             raise ValueError("Embeddings must be L2 normalized")
     
     @staticmethod
-    def validate_clip_frozen(clip_model: nn.Module, 
+    def validate_fashionclip_frozen(fashionclip_model: nn.Module, 
                            original_params: Dict[str, torch.Tensor]) -> None:
-        """CLIP 모델 고정 상태 검증"""
-        for name, param in clip_model.named_parameters():
+        """FashionCLIP 모델 고정 상태 검증"""
+        for name, param in fashionclip_model.named_parameters():
             if not torch.equal(param, original_params[name]):
-                raise ValueError(f"CLIP parameter '{name}' has been modified during training")
+                raise ValueError(f"FashionCLIP parameter '{name}' has been modified during training")
 ```
 
 ### 학습 과정 오류 처리
@@ -409,15 +409,15 @@ def test_normalized_output(json_batch):
 **Property 3 테스트**:
 ```python
 @given(training_batch=generate_training_batch())
-def test_clip_frozen_state(training_batch):
-    """Feature: fashion-json-encoder, Property 3: CLIP 모델 고정 상태 유지"""
-    original_params = {name: param.clone() for name, param in clip_model.named_parameters()}
+def test_fashionclip_frozen_state(training_batch):
+    """Feature: fashion-json-encoder, Property 3: FashionCLIP 모델 고정 상태 유지"""
+    original_params = {name: param.clone() for name, param in fashionclip_model.named_parameters()}
     # 학습 스텝 실행
     loss = contrastive_learner(training_batch['images'], training_batch['json'])
     loss.backward()
     optimizer.step()
-    # CLIP 파라미터 변경 여부 확인
-    for name, param in clip_model.named_parameters():
+    # FashionCLIP 파라미터 변경 여부 확인
+    for name, param in fashionclip_model.named_parameters():
         assert torch.equal(param, original_params[name])
 ```
 
