@@ -439,19 +439,31 @@ class FashionDataModule:
         print(f"Train dataset: {len(self.train_dataset)} items")
         print(f"Validation dataset: {len(self.val_dataset)} items")
     
-    def train_dataloader(self) -> DataLoader:
+    def train_dataloader(self, use_class_balanced: bool = False) -> DataLoader:
         """Get training data loader."""
         if self.train_dataset is None:
             raise ValueError("Call setup() first")
         
-        if self._train_dataloader is None:
-            self._train_dataloader = create_fashion_dataloader(
-                dataset=self.train_dataset,
-                batch_size=self.batch_size,
-                shuffle=True,
-                num_workers=self.num_workers,
-                pin_memory=True
-            )
+        if self._train_dataloader is None or use_class_balanced:
+            if use_class_balanced:
+                # Use class-balanced sampler
+                from .class_balanced_sampler import create_balanced_dataloader
+                self._train_dataloader = create_balanced_dataloader(
+                    dataset=self.train_dataset,
+                    batch_size=self.batch_size,
+                    oversample_minority=True,
+                    min_samples_per_class=2,
+                    num_workers=self.num_workers
+                )
+            else:
+                # Use regular dataloader
+                self._train_dataloader = create_fashion_dataloader(
+                    dataset=self.train_dataset,
+                    batch_size=self.batch_size,
+                    shuffle=True,
+                    num_workers=self.num_workers,
+                    pin_memory=True
+                )
         
         return self._train_dataloader
     

@@ -1,0 +1,100 @@
+{
+  "timestamp": "2026-02-05T19:23:57.360915",
+  "pipeline_version": "1.0",
+  "system_configuration": {
+    "temperature": 0.12,
+    "batch_size": 32,
+    "dataset_items": 2172,
+    "anchor_set_size": 218,
+    "tail_set_size": 1086
+  },
+  "performance_summary": {
+    "current_performance": {
+      "all_queries_recall_10": 29.352678577689563,
+      "anchor_queries_recall_10": 27.16346170221056,
+      "tail_queries_recall_10": 31.2316176645896,
+      "top5_accuracy": 14.929096641785957,
+      "top1_accuracy": 3.4466911764705883
+    },
+    "target_performance": {
+      "all_queries_recall_10_target": "75-80%",
+      "anchor_queries_recall_10_target": "85-92%"
+    },
+    "goal_achievement": {
+      "all_queries_achieved": false,
+      "anchor_queries_achieved": false,
+      "improvement_needed": -2.1892168754790013
+    }
+  },
+  "centrality_analysis_summary": {
+    "mean_centrality": 0.795889675617218,
+    "centrality_range": [
+      0.49336186051368713,
+      0.9081405401229858
+    ],
+    "anchor_threshold": 0.8605359792709351,
+    "proxy_validation": false
+  },
+  "category_analysis": {
+    "레트로": {
+      "centrality_mean": 0.7625800371170044,
+      "centrality_std": 0.06480079144239426,
+      "total_items": 193,
+      "anchor_items": 3,
+      "anchor_ratio": 1.5544041450777202,
+      "popularity_rank": 3
+    },
+    "로맨틱": {
+      "centrality_mean": 0.8048299551010132,
+      "centrality_std": 0.046832259744405746,
+      "total_items": 988,
+      "anchor_items": 85,
+      "anchor_ratio": 8.60323886639676,
+      "popularity_rank": 1
+    },
+    "리조트": {
+      "centrality_mean": 0.793463408946991,
+      "centrality_std": 0.06718941777944565,
+      "total_items": 991,
+      "anchor_items": 130,
+      "anchor_ratio": 13.118062563067609,
+      "popularity_rank": 2
+    }
+  },
+  "key_insights": [
+    "❌ 베스트셀러 Proxy 가설 미검증: 추가 최적화 필요",
+    "📊 가장 대중적 카테고리: 로맨틱 (중심성: 0.8048)",
+    "📊 가장 독특한 카테고리: 레트로 (중심성: 0.7626)",
+    "🎯 Anchor Queries 목표 미달성: 현재 27.2%, 목표 85-92%"
+  ],
+  "recommendations": [
+    {
+      "category": "모델 최적화",
+      "priority": "High",
+      "action": "Temperature 미세 조정 (0.08, 0.09, 0.11, 0.12 실험)",
+      "expected_impact": "Anchor Queries Recall@10 5-10% 향상"
+    },
+    {
+      "category": "아키텍처 개선",
+      "priority": "Medium",
+      "action": "JSON Encoder 차원 확장 (128→256)",
+      "expected_impact": "전체적인 임베딩 품질 향상"
+    },
+    {
+      "category": "데이터 최적화",
+      "priority": "High",
+      "action": "배치 크기 증가 (32→64) 및 전체 데이터 활용",
+      "expected_impact": "All Queries Recall@10 10-15% 향상"
+    }
+  ],
+  "next_steps": [
+    "1. Temperature 최적화 실험 (0.08-0.12 범위)",
+    "2. 배치 크기 증가 및 전체 데이터 활용",
+    "3. JSON Encoder 아키텍처 개선",
+    "4. 데이터 증강 기법 적용",
+    "5. Multi-head Attention 메커니즘 도입",
+    "6. 실시간 추천 API 시스템 구축",
+    "7. 논문/졸업작품 결과 정리",
+    "8. 베스트셀러 Proxy 시스템 상용화 검토"
+  ]
+}

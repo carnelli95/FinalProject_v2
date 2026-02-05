@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional, Iterator
 import PIL.Image
 from PIL import Image
+import torch
 
 from .processor import FashionDataProcessor
 from .data_models import FashionItem

@@ -13,7 +13,7 @@ class TrainingConfig:
     """학습 하이퍼파라미터"""
     batch_size: int = 64
     learning_rate: float = 1e-4
-    temperature: float = 0.07  # InfoNCE temperature (고정)
+    temperature: float = 0.1  # InfoNCE temperature (패션 도메인 최적화)
     embedding_dim: int = 128   # 필드별 embedding 차원
     hidden_dim: int = 256      # MLP hidden 차원
     output_dim: int = 512      # 최종 출력 차원 (고정)

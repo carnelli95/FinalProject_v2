@@ -1,24 +1,35 @@
-# Core ML libraries
-torch>=2.0.0
-torchvision>=0.15.0
-transformers>=4.30.0
+# Core ML libraries (65GB 대용량 학습 최적화)
+torch>=2.1.0
+torchvision>=0.16.0
+torchaudio>=2.1.0
+transformers>=4.35.0
 
 # Image processing
-Pillow>=9.0.0
+Pillow>=10.0.0
 
-# Data handling
-numpy>=1.21.0
+# Data handling (대용량 처리 최적화)
+numpy>=1.24.0
+pandas>=2.0.0
 
 # Visualization (minimal version)
-matplotlib>=3.5.0
-tqdm>=4.64.0
+matplotlib>=3.7.0
+tqdm>=4.66.0
 
-# Monitoring and logging
-tensorboard>=2.10.0
+# Monitoring and logging (분산 학습 지원)
+tensorboard>=2.14.0
+wandb>=0.16.0  # 대용량 실험 추적
+
+# Memory and performance optimization
+psutil>=5.9.0  # 메모리 모니터링
+accelerate>=0.24.0  # Hugging Face 가속화
 
 # Hyperparameter tuning
-optuna>=3.0.0
+optuna>=3.4.0
 
 # Testing
-pytest>=7.0.0
-hypothesis>=6.70.0
+pytest>=7.4.0
+hypothesis>=6.88.0
+
+# GPU 메모리 최적화 (선택사항)
+# nvidia-ml-py3>=7.352.0  # GPU 모니터링
+# torch-tb-profiler>=0.4.0  # 성능 프로파일링

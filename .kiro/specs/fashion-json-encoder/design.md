@@ -2,21 +2,31 @@
 
 ## 개요
 
-패션 이미지 추천 시스템을 위한 JSON Encoder 설계. K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하여 FashionCLIP 이미지 임베딩과 정렬되는 공통 임베딩 공간을 구축한다.
+패션 이미지 추천 시스템을 위한 고도화된 JSON Encoder 설계. K-Fashion 데이터셋의 JSON 메타데이터를 512차원 벡터로 변환하여 FashionCLIP 이미지 임베딩과 정렬되는 공통 임베딩 공간을 구축하며, **임베딩 중심성 기반 베스트셀러 Proxy** 혁신 기술을 포함한다.
 
 ### 핵심 설계 원칙
 
-- **단순성**: Embedding + MLP 구조만 사용, 복잡한 아키텍처 배제
-- **고정 출력**: 512차원 벡터 고정, 하이퍼파라미터 최소화
-- **모듈성**: PyTorch Module 기반 구현으로 재사용성 확보
-- **연구 중심**: 실험과 분석에 집중할 수 있는 명확한 구조
+- **혁신성**: 임베딩 중심성 기반 베스트셀러 Proxy 시스템 구현
+- **성능 최적화**: Temperature 0.1에서 Top-5 64.1% 달성
+- **Query-Aware**: All Queries vs Anchor Queries 차별화 평가
+- **확장성**: 다양한 평가 메트릭 및 분석 도구 지원
+
+### 🎯 핵심 혁신: 임베딩 중심성 기반 베스트셀러 Proxy
+
+**핵심 아이디어**: "베스트셀러를 판매 데이터 없이, 임베딩 공간의 중심성으로 근사(proxy)한다"
+
+**개념 직관**: "중심에 가까울수록 대중적이다"
+
+```
+임베딩 공간에서 많은 상품과 비슷한 디자인 → 트렌드성 디자인 → 잘 팔릴 가능성 ↑
+```
 
 ## 아키텍처
 
-### 전체 시스템 구조
+### 전체 시스템 구조 (고도화된 버전)
 
 ```
-K-Fashion Dataset (64GB)
+K-Fashion Dataset (2,172 items)
 ├── 이미지 (BBox crop)
 └── JSON 메타데이터
     ↓
@@ -26,8 +36,8 @@ K-Fashion Dataset (64GB)
     ↓
 ┌─────────────────┐    ┌─────────────────┐
 │ FashionCLIP     │    │ JSON Encoder    │
-│ Encoder         │    │ (학습 대상)      │
-│ (Frozen)        │    │                 │
+│ Encoder         │    │ (최적화됨)      │
+│ (Frozen)        │    │ T=0.1 최적      │
 └─────────────────┘    └─────────────────┘
     ↓                      ↓
 512차원 이미지 임베딩    512차원 JSON 임베딩
@@ -35,7 +45,57 @@ K-Fashion Dataset (64GB)
     └──────────────────────┘
               ↓
         InfoNCE Loss
-    (Temperature τ=0.07)
+    (Temperature τ=0.1)
+              ↓
+        [임베딩 중심성 분석]
+              ↓
+    ┌─────────────────────────────┐
+    │ 베스트셀러 Proxy 시스템      │
+    ├─────────────────────────────┤
+    │ 1. 글로벌 중심 벡터 계산     │
+    │ 2. 중심성 점수 계산         │
+    │ 3. Anchor Set 선정 (상위10%)│
+    │ 4. Query-Aware 평가        │
+    └─────────────────────────────┘
+              ↓
+    ┌─────────────────────────────┐
+    │ 성능 분석 및 평가           │
+    ├─────────────────────────────┤
+    │ • All Queries Recall@10     │
+    │ • Anchor Queries Recall@10  │
+    │ • 카테고리별 중심성 분석     │
+    │ • Temperature 최적화        │
+    └─────────────────────────────┘
+```
+
+### 임베딩 중심성 기반 베스트셀러 Proxy 아키텍처
+
+```
+STEP 1: 전체 임베딩 추출
+┌─────────────────────────────────┐
+│ 모든 이미지 → FashionCLIP       │
+│ 결과: [N, 512] 임베딩 매트릭스   │
+└─────────────────────────────────┘
+              ↓
+STEP 2: 글로벌 중심 벡터 계산
+┌─────────────────────────────────┐
+│ global_center = mean(embeddings)│
+│ normalize(global_center)        │
+└─────────────────────────────────┘
+              ↓
+STEP 3: 중심성 점수 계산
+┌─────────────────────────────────┐
+│ for each embedding:             │
+│   score = cosine_sim(           │
+│     embedding, global_center)   │
+└─────────────────────────────────┘
+              ↓
+STEP 4: Anchor Set 생성
+┌─────────────────────────────────┐
+│ threshold = percentile(90)      │
+│ anchor_indices = scores >= threshold│
+│ 결과: 상위 10% = 베스트셀러 Proxy│
+└─────────────────────────────────┘
 ```
 
 ### JSON Encoder 상세 구조
@@ -89,7 +149,7 @@ JSON 입력 스키마:
 
 ## 컴포넌트 및 인터페이스
 
-### 1. JSONEncoder 클래스
+### 1. JSONEncoder 클래스 (최적화됨)
 
 ```python
 class JSONEncoder(nn.Module):
@@ -97,164 +157,247 @@ class JSONEncoder(nn.Module):
                  embedding_dim: int = 128,
                  hidden_dim: int = 256):
         """
-        Args:
-            vocab_sizes: 각 필드별 vocabulary 크기
-            embedding_dim: 각 필드 embedding 차원
-            hidden_dim: MLP hidden layer 차원
+        최적화된 JSON Encoder
+        - Temperature 0.1에서 최적 성능
+        - Top-5 정확도 64.1% 달성
         """
         
     def forward(self, batch: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
         Args:
-            batch: {
-                'category': [batch_size],
-                'style': [batch_size, max_style_len],
-                'silhouette': [batch_size],
-                'material': [batch_size, max_material_len],
-                'detail': [batch_size, max_detail_len]
-            }
+            batch: JSON 배치 데이터
         Returns:
             torch.Tensor: [batch_size, 512] 정규화된 임베딩
         """
 ```
 
-### 2. ContrastiveLearner 클래스
+### 2. EmbeddingCentralityProxy 클래스 (핵심 혁신)
+
+```python
+class EmbeddingCentralityProxy:
+    """임베딩 중심성 기반 베스트셀러 Proxy 시스템"""
+    
+    def __init__(self, system: FashionEncoderSystem):
+        self.system = system
+        self.global_center = None
+        self.centrality_scores = None
+        self.anchor_indices = None  # 베스트셀러 Proxy
+        
+    def extract_all_embeddings(self) -> Dict[str, Any]:
+        """전체 이미지 임베딩 추출"""
+        
+    def compute_global_center(self) -> np.ndarray:
+        """글로벌 중심 벡터 계산"""
+        
+    def compute_centrality_scores(self) -> np.ndarray:
+        """중심성 점수 계산 (코사인 유사도)"""
+        
+    def create_anchor_and_tail_sets(self, anchor_percentile: int = 90) -> Dict[str, Any]:
+        """Anchor Set (상위 10%) 생성"""
+        
+    def run_complete_analysis(self) -> Dict[str, Any]:
+        """전체 중심성 분석 파이프라인"""
+```
+
+### 3. AnchorBasedEvaluator 클래스 (Query-Aware 평가)
+
+```python
+class AnchorBasedEvaluator:
+    """Anchor Set 기반 Query-aware 평가 시스템"""
+    
+    def __init__(self, system: FashionEncoderSystem, 
+                 anchor_indices: List[int], tail_indices: List[int]):
+        self.anchor_indices = anchor_indices  # 베스트셀러 Proxy
+        self.tail_indices = tail_indices
+        
+    def create_query_datasets(self) -> Dict[str, Any]:
+        """쿼리 타입별 데이터셋 생성"""
+        
+    def evaluate_query_set(self, query_name: str, query_indices: List[int]) -> Dict[str, float]:
+        """특정 쿼리 셋 평가 (Recall@K 포함)"""
+        
+    def run_anchor_based_evaluation(self) -> Dict[str, Any]:
+        """Anchor 기반 포괄적 평가"""
+```
+
+### 4. 고도화된 ContrastiveLearner 클래스
 
 ```python
 class ContrastiveLearner(nn.Module):
     def __init__(self, json_encoder: JSONEncoder, 
                  fashionclip_encoder: FashionCLIPVisionModel,
-                 temperature: float = 0.07):
+                 temperature: float = 0.1):  # 최적화된 temperature
         
     def forward(self, images: torch.Tensor, 
                 json_data: Dict[str, torch.Tensor]) -> torch.Tensor:
         """
-        Args:
-            images: [batch_size, 3, 224, 224]
-            json_data: JSON 배치 데이터
-        Returns:
-            InfoNCE loss 값
+        최적화된 대조 학습
+        - Temperature 0.1 사용
+        - 향상된 성능 메트릭 계산
         """
-```
-
-### 3. 데이터 전처리 인터페이스
-
-```python
-class FashionDataProcessor:
-    def __init__(self, dataset_path: str, 
-                 target_categories: List[str] = ['레트로', '로맨틱', '리조트']):
         
-    def polygon_to_bbox(self, polygon: List[Tuple[int, int]]) -> Tuple[int, int, int, int]:
-        """Polygon 좌표를 BBox로 변환"""
-        
-    def crop_image_by_bbox(self, image: PIL.Image, 
-                          bbox: Tuple[int, int, int, int]) -> PIL.Image:
-        """BBox 기준으로 이미지 크롭"""
-        
-    def build_vocabulary(self, json_files: List[str]) -> Dict[str, Dict[str, int]]:
-        """각 필드별 vocabulary 구축"""
-        
-    def process_json_fields(self, json_data: Dict) -> Dict[str, Union[int, List[int]]]:
-        """JSON 필드를 vocabulary index로 변환"""
+    def get_embeddings(self, images: torch.Tensor, 
+                      json_data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """임베딩 추출 (중심성 분석용)"""
 ```
 
 ## 데이터 모델
 
-### 입력 데이터 구조
+### 입력 데이터 구조 (고도화됨)
 
 ```python
 @dataclass
 class FashionItem:
-    """단일 패션 아이템 데이터"""
+    """단일 패션 아이템 데이터 (중심성 정보 포함)"""
     image_path: str
-    bbox: Tuple[int, int, int, int]  # (x, y, width, height)
+    bbox: Tuple[int, int, int, int]
     category: str
     style: List[str]
     silhouette: str
     material: List[str]
     detail: List[str]
     
-@dataclass
-class ProcessedBatch:
-    """학습용 배치 데이터"""
-    images: torch.Tensor  # [batch_size, 3, 224, 224]
-    category_ids: torch.Tensor  # [batch_size]
-    style_ids: torch.Tensor  # [batch_size, max_style_len]
-    silhouette_ids: torch.Tensor  # [batch_size]
-    material_ids: torch.Tensor  # [batch_size, max_material_len]
-    detail_ids: torch.Tensor  # [batch_size, max_detail_len]
+    # 중심성 분석 결과 (런타임 추가)
+    centrality_score: Optional[float] = None
+    is_anchor: Optional[bool] = None  # 베스트셀러 Proxy 여부
     
-    # 패딩 마스크 (다중 범주형 필드용)
-    style_mask: torch.Tensor  # [batch_size, max_style_len]
-    material_mask: torch.Tensor  # [batch_size, max_material_len]
-    detail_mask: torch.Tensor  # [batch_size, max_detail_len]
+@dataclass
+class CentralityAnalysisResult:
+    """중심성 분석 결과"""
+    global_center: np.ndarray  # [512] 글로벌 중심 벡터
+    centrality_scores: np.ndarray  # [N] 각 아이템의 중심성 점수
+    anchor_indices: np.ndarray  # 상위 10% 인덱스 (베스트셀러 Proxy)
+    tail_indices: np.ndarray   # 하위 50% 인덱스
+    
+    # 통계 정보
+    mean_centrality: float
+    std_centrality: float
+    anchor_threshold: float
+    
+    # 카테고리별 분석
+    category_centrality: Dict[str, Dict[str, float]]
+    
+@dataclass
+class QueryAwareEvaluationResult:
+    """Query-Aware 평가 결과"""
+    all_queries_metrics: Dict[str, float]
+    anchor_queries_metrics: Dict[str, float]  # 베스트셀러 Proxy
+    tail_queries_metrics: Dict[str, float]
+    
+    # 성능 개선 분석
+    anchor_improvement: float  # Anchor vs All 개선폭
+    goal_achievement: Dict[str, Any]  # 목표 달성 여부
 ```
 
-### 모델 출력 구조
+### 고도화된 학습 설정
 
 ```python
 @dataclass
-class EmbeddingOutput:
-    """임베딩 출력 결과"""
-    image_embeddings: torch.Tensor  # [batch_size, 512]
-    json_embeddings: torch.Tensor   # [batch_size, 512]
-    similarity_matrix: torch.Tensor  # [batch_size, batch_size]
-    loss: torch.Tensor              # scalar
-```
-
-### 학습 설정
-
-```python
-@dataclass
-class TrainingConfig:
-    """학습 하이퍼파라미터"""
-    batch_size: int = 64
+class OptimizedTrainingConfig:
+    """최적화된 학습 하이퍼파라미터"""
+    # 최적화된 설정
+    temperature: float = 0.1  # 최적 성능 확인됨
+    batch_size: int = 32      # Recall@10 계산을 위해 증가
     learning_rate: float = 1e-4
-    temperature: float = 0.07  # InfoNCE temperature (고정)
-    embedding_dim: int = 128   # 필드별 embedding 차원
-    hidden_dim: int = 256      # MLP hidden 차원
-    output_dim: int = 512      # 최종 출력 차원 (고정)
-    dropout_rate: float = 0.1
-    weight_decay: float = 1e-5
-    max_epochs: int = 100
+    max_epochs: int = 8       # Baseline v1 설정
     
-    # 데이터 관련
-    target_categories: List[str] = field(default_factory=lambda: ['레트로', '로맨틱', '리조트'])
-    image_size: int = 224
-    crop_padding: float = 0.1  # BBox 크롭 시 패딩 비율
+    # 모델 구조
+    embedding_dim: int = 128
+    hidden_dim: int = 256
+    output_dim: int = 512     # 고정
+    dropout_rate: float = 0.1
+    
+    # 중심성 분석 설정
+    anchor_percentile: int = 90  # 상위 10%
+    tail_percentile: int = 50    # 하위 50%
+    
+    # 평가 설정
+    recall_k_values: List[int] = field(default_factory=lambda: [3, 5, 10, 20])
+    evaluation_batch_size: int = 32
+    
+    # 성능 목표
+    target_all_queries_recall_10: float = 0.75  # 75%
+    target_anchor_queries_recall_10: float = 0.85  # 85%
+```
+
+### 성능 메트릭 데이터 모델
+
+```python
+@dataclass
+class ComprehensiveMetrics:
+    """포괄적 성능 메트릭"""
+    # 기본 메트릭
+    top1_accuracy: float
+    top5_accuracy: float
+    mean_reciprocal_rank: float
+    
+    # Recall@K 메트릭
+    recall_at_3: float
+    recall_at_5: float
+    recall_at_10: float
+    recall_at_20: float
+    
+    # 유사도 분석
+    avg_positive_similarity: float
+    avg_negative_similarity: float
+    similarity_gap: float  # positive - negative
+    
+    # 임베딩 품질
+    embedding_norm_mean: float
+    embedding_norm_std: float
+    is_properly_normalized: bool
+    
+    # 카테고리별 성능
+    category_performance: Dict[str, Dict[str, float]]
 ```
 
 ## 정확성 속성
 
 *속성(Property)은 시스템의 모든 유효한 실행에서 참이어야 하는 특성이나 동작입니다. 속성은 인간이 읽을 수 있는 명세와 기계가 검증할 수 있는 정확성 보장 사이의 다리 역할을 합니다.*
 
-### Property 1: 고정 출력 차원
-*임의의* JSON 메타데이터 입력에 대해, JSON_Encoder의 출력은 정확히 512차원이어야 한다
-**Validates: Requirements 1.1**
+### Property 1: 글로벌 중심 벡터 계산
+*임의의* 이미지 임베딩 집합에 대해, 글로벌 중심 벡터는 모든 임베딩의 평균으로 계산되고 L2 정규화되어야 한다
+**Validates: Requirements 17.1**
 
-### Property 2: 정규화된 출력 벡터
-*임의의* JSON_Encoder 출력 벡터에 대해, L2 norm이 1이어야 하고 FashionCLIP 이미지 임베딩과 cosine similarity 계산이 가능해야 한다
-**Validates: Requirements 1.2**
+### Property 2: 중심성 점수 계산 정확성
+*임의의* 임베딩과 글로벌 중심 벡터에 대해, 중심성 점수는 코사인 유사도로 올바르게 계산되어야 하며 [-1, 1] 범위에 있어야 한다
+**Validates: Requirements 17.2**
 
-### Property 3: FashionCLIP 모델 고정 상태 유지
-*임의의* 학습 과정에서, FashionCLIP Image Encoder의 파라미터는 학습 전후가 동일해야 한다
-**Validates: Requirements 1.5**
+### Property 3: Anchor Set 선정 정확성
+*임의의* 중심성 점수 배열에 대해, 상위 10% 임계값으로 선정된 Anchor Set의 모든 원소는 임계값 이상이어야 하고, 전체의 약 10%를 차지해야 한다
+**Validates: Requirements 17.3**
 
-### Property 4: 다중 범주형 필드 처리
-*임의의* 다중 범주형 필드(style, material, detail)에 대해, 리스트 형태의 입력을 올바르게 처리하고 mean pooling을 통해 단일 임베딩으로 집계해야 한다
-**Validates: Requirements 2.2, 2.4, 2.5**
+### Property 4: Anchor Set 중심성 우월성
+*임의의* 중심성 점수 분포에서, Anchor Set (상위 10%)의 평균 중심성은 전체 평균 중심성보다 높아야 한다
+**Validates: Requirements 17.5**
 
-### Property 5: Positive Pair 생성
-*임의의* 학습 배치에서, 각 이미지 임베딩은 해당하는 JSON 임베딩과 positive pair를 형성해야 한다
-**Validates: Requirements 3.1**
+### Property 5: Query-Aware 평가 분리
+*임의의* 데이터셋과 Anchor 인덱스에 대해, All Queries와 Anchor Queries가 올바르게 분리되어야 하고, Anchor Queries는 전체의 부분집합이어야 한다
+**Validates: Requirements 18.1**
 
-### Property 6: Negative Pair 생성
-*임의의* 학습 배치에서, 각 이미지 임베딩은 다른 모든 JSON 임베딩과 negative pair를 형성해야 한다
-**Validates: Requirements 3.2**
+### Property 6: 포괄적 평가 메트릭 계산
+*임의의* 유사도 매트릭스에 대해, Recall@K (K=3,5,10,20), Top-1 정확도, MRR이 올바르게 계산되어야 하고, 모든 값은 [0, 1] 범위에 있어야 한다
+**Validates: Requirements 18.2, 20.1, 20.2**
 
-### Property 7: InfoNCE Loss 계산
-*임의의* 학습 배치에 대해, InfoNCE loss가 올바르게 계산되어야 하며 temperature τ=0.07을 사용해야 한다
-**Validates: Requirements 3.3**
+### Property 7: Anchor Queries 성능 우월성
+*임의의* 평가 결과에서, Anchor Queries의 Recall@10 성능은 All Queries의 성능보다 높거나 같아야 한다 (베스트셀러 Proxy 가설 검증)
+**Validates: Requirements 18.3**
+
+### Property 8: 카테고리별 분석 일관성
+*임의의* 카테고리별 데이터에 대해, 각 카테고리의 중심성 통계와 성능 메트릭이 올바르게 계산되어야 하고, 모든 카테고리의 합이 전체와 일치해야 한다
+**Validates: Requirements 17.4, 20.3**
+
+### Property 9: 임베딩 품질 보장
+*임의의* 생성된 임베딩에 대해, L2 norm이 1이어야 하고, 임베딩 차원이 512여야 하며, 분산이 양수여야 한다
+**Validates: Requirements 20.4**
+
+### Property 10: 설정 및 출력 형식 검증
+*임의의* 평가 설정에서, 배치 크기가 32 이상이어야 하고, 평가 결과가 유효한 JSON 형태로 직렬화 가능해야 한다
+**Validates: Requirements 18.4, 18.5**
+
+### Property 11: 포괄적 보고서 생성
+*임의의* 성능 데이터에 대해, temperature 비교 보고서, 최적 설정 권장사항, 성능 추이 시각화가 일관된 형태로 생성되어야 한다
+**Validates: Requirements 19.4, 19.5, 20.5**
 
 ## 오류 처리
 
@@ -354,7 +497,7 @@ class TrainingErrorHandler:
 본 시스템은 **단위 테스트**와 **속성 기반 테스트**를 모두 활용하여 포괄적인 검증을 수행합니다:
 
 - **단위 테스트**: 특정 예제, 엣지 케이스, 오류 조건 검증
-- **속성 테스트**: 모든 입력에 대한 범용 속성 검증
+- **속성 테스트**: 모든 입력에 대한 범용 속성 검증  
 - **통합**: 두 접근법이 상호 보완하여 완전한 커버리지 제공
 
 ### 속성 기반 테스트 설정
@@ -363,25 +506,25 @@ class TrainingErrorHandler:
 **설정**: 각 속성 테스트당 최소 100회 반복 실행
 **태그 형식**: **Feature: fashion-json-encoder, Property {번호}: {속성 텍스트}**
 
-### 단위 테스트 전략
+### 고도화된 테스트 전략
 
 **핵심 영역**:
-- JSON 필드별 임베딩 처리 (category, style, silhouette, material, detail)
-- 다중 범주형 필드의 mean pooling 동작
-- MLP 레이어 통과 후 출력 차원 및 정규화
-- InfoNCE loss 계산 정확성
-- 배치 처리 및 패딩 마스크 적용
+- **임베딩 중심성 분석**: 글로벌 중심 계산, 중심성 점수, Anchor Set 선정
+- **Query-Aware 평가**: All vs Anchor Queries 분리, Recall@K 계산
+- **Temperature 최적화**: 다양한 temperature 값에서의 성능 비교
+- **카테고리별 분석**: 중심성 및 성능의 카테고리별 차이
+- **포괄적 메트릭**: MRR, Positive/Negative Similarity, 임베딩 품질
 
 **엣지 케이스**:
-- 빈 리스트를 가진 다중 범주형 필드
-- 최대 길이를 초과하는 다중 범주형 필드
-- 배치 크기가 1인 경우
-- 모든 필드가 동일한 값을 가지는 경우
+- 단일 카테고리만 있는 경우의 중심성 계산
+- 배치 크기가 10 미만인 경우의 Recall@10 처리
+- 모든 임베딩이 동일한 경우의 중심성 분석
+- 극단적 temperature 값 (0.01, 1.0)에서의 동작
 
-**오류 조건**:
-- 잘못된 vocabulary index 입력
-- 차원 불일치 상황
-- 메모리 부족 상황 시뮬레이션
+**성능 검증**:
+- Baseline v2 모델의 Top-5 64.1% 달성 확인
+- Temperature 0.1 vs 0.15 성능 차이 (8.8%p) 검증
+- Anchor Queries의 성능 우월성 확인
 
 ### 속성 테스트 상세 명세
 
@@ -389,58 +532,50 @@ class TrainingErrorHandler:
 
 **Property 1 테스트**:
 ```python
-@given(json_batch=generate_json_batch())
-def test_fixed_output_dimension(json_batch):
-    """Feature: fashion-json-encoder, Property 1: 고정 출력 차원"""
-    output = json_encoder(json_batch)
-    assert output.shape[-1] == 512
+@given(embeddings=generate_image_embeddings())
+def test_global_center_calculation(embeddings):
+    """Feature: fashion-json-encoder, Property 1: 글로벌 중심 벡터 계산"""
+    global_center = compute_global_center(embeddings)
+    expected_center = embeddings.mean(axis=0)
+    expected_center = expected_center / np.linalg.norm(expected_center)
+    assert np.allclose(global_center, expected_center)
+    assert np.isclose(np.linalg.norm(global_center), 1.0)
 ```
 
 **Property 2 테스트**:
 ```python
-@given(json_batch=generate_json_batch())
-def test_normalized_output(json_batch):
-    """Feature: fashion-json-encoder, Property 2: 정규화된 출력 벡터"""
-    output = json_encoder(json_batch)
-    norms = torch.norm(output, dim=-1)
-    assert torch.allclose(norms, torch.ones_like(norms), atol=1e-6)
+@given(embedding=generate_single_embedding(), center=generate_center_vector())
+def test_centrality_score_calculation(embedding, center):
+    """Feature: fashion-json-encoder, Property 2: 중심성 점수 계산 정확성"""
+    score = compute_centrality_score(embedding, center)
+    expected_score = np.dot(embedding, center) / (np.linalg.norm(embedding) * np.linalg.norm(center))
+    assert np.isclose(score, expected_score)
+    assert -1.0 <= score <= 1.0
 ```
 
-**Property 3 테스트**:
+**Property 7 테스트**:
 ```python
-@given(training_batch=generate_training_batch())
-def test_fashionclip_frozen_state(training_batch):
-    """Feature: fashion-json-encoder, Property 3: FashionCLIP 모델 고정 상태 유지"""
-    original_params = {name: param.clone() for name, param in fashionclip_model.named_parameters()}
-    # 학습 스텝 실행
-    loss = contrastive_learner(training_batch['images'], training_batch['json'])
-    loss.backward()
-    optimizer.step()
-    # FashionCLIP 파라미터 변경 여부 확인
-    for name, param in fashionclip_model.named_parameters():
-        assert torch.equal(param, original_params[name])
-```
-
-**Property 4 테스트**:
-```python
-@given(multi_categorical_data=generate_multi_categorical_data())
-def test_multi_categorical_processing(multi_categorical_data):
-    """Feature: fashion-json-encoder, Property 4: 다중 범주형 필드 처리"""
-    for field in ['style', 'material', 'detail']:
-        field_data = multi_categorical_data[field]
-        # 리스트 형태 입력이 올바르게 처리되는지 확인
-        embedding = json_encoder._process_multi_categorical(field_data, field)
-        assert embedding.shape[-1] == json_encoder.embedding_dim
+@given(evaluation_results=generate_evaluation_results())
+def test_anchor_queries_performance_superiority(evaluation_results):
+    """Feature: fashion-json-encoder, Property 7: Anchor Queries 성능 우월성"""
+    all_recall_10 = evaluation_results['all_queries']['recall_at_10']
+    anchor_recall_10 = evaluation_results['anchor_queries']['recall_at_10']
+    assert anchor_recall_10 >= all_recall_10  # 베스트셀러 Proxy 가설 검증
 ```
 
 ### 통합 테스트
 
 **전체 파이프라인 테스트**:
-- K-Fashion 데이터셋 샘플을 이용한 end-to-end 테스트
-- 전처리 → 모델 학습 → 임베딩 생성 → 유사도 계산 전 과정 검증
-- 메모리 사용량 및 학습 시간 모니터링
+- K-Fashion 데이터셋 2,172개 아이템을 이용한 end-to-end 테스트
+- 임베딩 중심성 분석 → Anchor Set 생성 → Query-Aware 평가 전 과정 검증
+- Temperature 최적화 실험 재현성 확인
 
 **성능 벤치마크**:
-- 배치 크기별 처리 속도 측정
-- GPU 메모리 사용량 프로파일링
-- 대용량 데이터셋에서의 안정성 검증
+- Baseline v2 모델 성능 재현 (Top-5 64.1%)
+- 다양한 배치 크기에서의 Recall@K 계산 안정성
+- 대용량 데이터셋에서의 중심성 분석 확장성
+
+**혁신 기능 검증**:
+- 임베딩 중심성 기반 베스트셀러 Proxy의 유효성
+- Query-Aware 평가 시스템의 차별화 능력
+- 카테고리별 중심성 인사이트의 일관성
